@@ -62,12 +62,6 @@ node_modules/
 # Misc
 .DS_Store
 
-# Data (but keep .gitkeep files)
+# Data
 data/*
-!data/.gitkeep
-!data/README.md
 
-# Models (but keep .gitkeep files)
-models/*
-!models/.gitkeep
-!models/README.md
