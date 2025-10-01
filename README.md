@@ -240,10 +240,6 @@ export PYTHONPATH="${PYTHONPATH}:$(pwd)/src"
 
 Ensure `MobileFaceNet.onnx` is in the `models/` directory.
 
-## Migration from Old Structure
-
-See [docs/MIGRATION_GUIDE.md](docs/MIGRATION_GUIDE.md) for details on migrating from the old project structure.
-
 ## License
 
 MIT License

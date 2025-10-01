@@ -60,7 +60,7 @@ class AppConfig:
     host: str = "0.0.0.0"
     port: int = 7860
     share: bool = False
-    similarity_threshold: float = 0.5  # Threshold for duplicate detection
+    similarity_threshold: float = 0.6  # Threshold for duplicate detection
     top_k_results: int = 6  # Number of similar faces to return
 
 
