@@ -17,4 +17,6 @@ jobs:
       - name: Push to hub
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        run: git push https://pray:$HF_TOKEN@huggingface.co/spaces/pray/face_matching_mvp main
+        run: |
+          git pull origin main --rebase
+          git push https://pray:$HF_TOKEN@huggingface.co/spaces/pray/face_matching_mvp main
