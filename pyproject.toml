@@ -1,0 +1,83 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "face-matcher"
+version = "0.1.0"
+description = "Face matching MVP for duplicate account detection using face embeddings and Milvus Lite"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+authors = [
+    {name = "Face Matcher Team"}
+]
+keywords = ["face-recognition", "duplicate-detection", "milvus", "computer-vision"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Image Recognition",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+]
+
+dependencies = [
+    "pymilvus[milvus-lite]>=2.3.0",
+    "gradio>=4.0.0",
+    "onnxruntime>=1.16.0",
+    "opencv-python>=4.8.0",
+    "numpy>=1.24.0",
+    "uniface>=0.1.0",
+    "matplotlib>=3.7.0",
+    "requests>=2.31.0",
+    "Pillow>=10.0.0",
+    "tqdm>=4.65.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "black>=23.0.0",
+    "flake8>=6.0.0",
+    "mypy>=1.4.0",
+    "isort>=5.12.0",
+]
+
+[project.scripts]
+face-matcher-app = "face_matcher.ui.gradio_app:main"
+face-matcher-prepare = "scripts.prepare_database:main"
+
+[project.urls]
+Homepage = "https://github.com/yourusername/face-matcher"
+Repository = "https://github.com/yourusername/face-matcher"
+Documentation = "https://github.com/yourusername/face-matcher/docs"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.black]
+line-length = 100
+target-version = ['py38', 'py39', 'py310', 'py311']
+include = '\.pyi?$'
+
+[tool.isort]
+profile = "black"
+line_length = 100
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --cov=src/face_matcher --cov-report=html --cov-report=term"

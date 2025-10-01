@@ -1,0 +1,73 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+.venv/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs
+logs/
+*.log
+
+# Database
+*.sqlite3
+*.db
+
+# Vector database
+data/chroma/
+
+# PDF files (if needed)
+# papers/
+
+# Docker
+.dockerignore
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+.nox/
+
+# Serverless
+.serverless/
+node_modules/
+
+# Misc
+.DS_Store
+
+# Data (but keep .gitkeep files)
+data/*
+!data/.gitkeep
+!data/README.md
+
+# Models (but keep .gitkeep files)
+models/*
+!models/.gitkeep
+!models/README.md
