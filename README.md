@@ -70,7 +70,7 @@ face_matching_mvp/
    uv pip install -r requirements.txt
    ```
 
-4. **Install package in editable mode (optional):**
+4. **Install package in editable mode (optional) or if you want to run test:**
    ```bash
    pip install -e .
    ```
@@ -153,7 +153,7 @@ All configuration is centralized in `config.py` - no environment variables neede
 # Install development dependencies
 pip install -r requirements-dev.txt
 
-# Run tests
+# Run tests (make sure to run pip install -e .)
 pytest
 
 # Run tests with coverage
