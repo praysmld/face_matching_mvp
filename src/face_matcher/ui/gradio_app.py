@@ -159,8 +159,6 @@ class FaceMatchingApp:
                 nprobe=config.database.nprobe
             )
 
-            print(results)
-
             # Check if no results
             if len(results) == 0:
                 return (
