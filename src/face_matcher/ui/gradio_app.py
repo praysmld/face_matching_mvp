@@ -208,6 +208,12 @@ class FaceMatchingApp:
                     if img is not None:
                         img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
+                        # Add red overlay if similarity exceeds threshold (duplicate detected)
+                        if result['similarity'] >= config.app.similarity_threshold:
+                            overlay = np.zeros_like(img_rgb)
+                            overlay[:, :] = [255, 0, 0]  # Red color in RGB
+                            img_rgb = cv2.addWeighted(img_rgb, 0.7, overlay, 0.3, 0)  # 30% red opacity
+
                         # Create caption
                         caption = (
                             f"#{idx+1}: {result['name']}\n"
