@@ -21,7 +21,7 @@ jobs:
           
       - name: Migrate model to LFS
         run: |
-          git lfs migrate import --include="*.onnx" --everything --yes
+          git lfs migrate import --include="*.onnx,*.jpg" --everything --yes
           
       - name: Push to hub
         env:
