@@ -37,9 +37,6 @@ logs/
 # Database
 *.sqlite3
 
-# Vector database
-data/chroma/
-
 # PDF files (if needed)
 # papers/
 
