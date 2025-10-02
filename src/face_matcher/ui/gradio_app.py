@@ -8,9 +8,10 @@ import cv2
 import numpy as np
 import os
 import logging
+from pathlib import Path
 from typing import Tuple, List
 
-from face_matcher.config import config
+from face_matcher.config import config, PROJECT_ROOT
 from face_matcher.core.detection import FaceDetectorFactory
 from face_matcher.core.recognition import FaceEmbeddingExtractor
 from face_matcher.core.database import VectorDatabase
@@ -21,6 +22,36 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+
+def resolve_image_path(stored_path: str) -> str:
+    """
+    Convert stored absolute path to correct path for current environment.
+
+    Handles paths stored as absolute paths (e.g., /mnt/d/project/face_matching_mvp/data/...)
+    and converts them to work in both local and Hugging Face deployments.
+
+    Args:
+        stored_path: Path stored in database (may be absolute)
+
+    Returns:
+        Resolved absolute path for current environment
+    """
+    # Convert to Path object
+    path = Path(stored_path)
+
+    # Extract the relative portion after 'face_matching_mvp' or use parts after 'data'
+    parts = path.parts
+
+    # Find 'data' in path parts and reconstruct from there
+    if 'data' in parts:
+        data_index = parts.index('data')
+        relative_parts = parts[data_index:]
+        resolved_path = PROJECT_ROOT / Path(*relative_parts)
+        return str(resolved_path)
+
+    # If path is already relative or doesn't contain 'data', return as-is
+    return stored_path
 
 
 class FaceMatchingApp:
@@ -128,6 +159,8 @@ class FaceMatchingApp:
                 nprobe=config.database.nprobe
             )
 
+            print(results)
+
             # Check if no results
             if len(results) == 0:
                 return (
@@ -169,21 +202,26 @@ class FaceMatchingApp:
             gallery_images = []
             for idx, result in enumerate(results):
                 # Load ORIGINAL downloaded image (not cropped/aligned)
-                img_path = result.get('original_path') or result['image_path']
+                stored_path = result.get('original_path') or result['image_path']
+                img_path = resolve_image_path(stored_path)
+
                 if os.path.exists(img_path):
                     img = cv2.imread(img_path)
-                    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                    if img is not None:
+                        img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
-                    # Create caption
-                    caption = (
-                        f"#{idx+1}: {result['name']}\n"
-                        f"Similarity: {result['similarity']:.2%}\n"
-                        f"Distance: {result['distance']:.4f}"
-                    )
+                        # Create caption
+                        caption = (
+                            f"#{idx+1}: {result['name']}\n"
+                            f"Similarity: {result['similarity']:.2%}\n"
+                            f"Distance: {result['distance']:.4f}"
+                        )
 
-                    gallery_images.append((img_rgb, caption))
+                        gallery_images.append((img_rgb, caption))
+                    else:
+                        logger.warning(f"Failed to read image: {img_path}")
                 else:
-                    logger.warning(f"Image not found: {img_path}")
+                    logger.warning(f"Image not found: {img_path} (stored as: {stored_path})")
 
             return status, confidence_text, gallery_images
 
