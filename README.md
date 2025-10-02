@@ -1,3 +1,15 @@
+---
+title: Face Matcher - Duplicate Detection
+emoji: 👤
+colorFrom: blue
+colorTo: purple
+sdk: gradio
+sdk_version: 4.0.0
+app_file: app.py
+python_version: 3.11
+pinned: false
+---
+
 # Face Matcher - Duplicate Account Detection
 
 A face matching MVP for duplicate account detection using face embeddings and vector similarity search with Milvus Lite.
