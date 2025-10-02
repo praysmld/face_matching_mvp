@@ -55,5 +55,7 @@ htmlcov/
 node_modules/
 
 # Misc
+misc/
 .DS_Store
+*.gif
 
