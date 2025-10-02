@@ -15,7 +15,12 @@ pinned: false
 A face matching MVP for duplicate account detection using face embeddings and vector similarity search with Milvus Lite.
 
 ## Demo
-![Face Matcher Demo](misc/demo.gif)
+
+🚀 **Try the live demo**: [https://huggingface.co/spaces/pray/face_matching_mvp](https://huggingface.co/spaces/pray/face_matching_mvp)
+
+<div align="center">
+  <img src="misc/demo.gif" alt="Face Matcher Demo" width="auto" />
+</div>
 
 *Upload an image to find potential duplicate accounts based on facial similarity*
 
