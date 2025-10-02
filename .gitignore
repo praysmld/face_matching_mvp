@@ -36,7 +36,6 @@ logs/
 
 # Database
 *.sqlite3
-*.db
 
 # Vector database
 data/chroma/
