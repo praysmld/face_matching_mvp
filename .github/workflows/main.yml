@@ -14,19 +14,43 @@ jobs:
         with:
           fetch-depth: 0
           lfs: true
-
-      - name: Setup Git LFS
-        run: |
-          git lfs install
           
-      - name: Migrate model to LFS
-        run: |
-          git lfs migrate import --include="*.onnx,*.jpg" --everything --yes
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
           
-      - name: Push to hub
+      - name: Install Hugging Face Hub
+        run: pip install huggingface_hub
+          
+      - name: Upload to Hugging Face Space
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          git remote add hf https://pray:$HF_TOKEN@huggingface.co/spaces/pray/face_matching_mvp || true
-          git fetch hf
-          git push hf main --force-with-lease
+          python << 'EOF'
+          from huggingface_hub import HfApi
+          import os
+          
+          api = HfApi(token=os.environ['HF_TOKEN'])
+          
+          api.upload_folder(
+              folder_path=".",
+              repo_id="pray/face_matching_mvp",
+              repo_type="space",
+              commit_message="Update from GitHub Actions",
+              ignore_patterns=[
+                  ".git/*",
+                  ".github/*",
+                  "*.pyc",
+                  "__pycache__/*",
+                  ".gitattributes",
+                  ".gitignore",
+                  "tests/*",              # Exclude tests from Space
+                  "requirements-dev.txt", # Exclude dev dependencies
+                  ".pytest_cache/*",
+                  "*.egg-info/*",
+              ]
+          )
+          
+          print("Upload complete!")
+          EOF
