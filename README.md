@@ -24,6 +24,179 @@ A face matching MVP for duplicate account detection using face embeddings and ve
 
 *Upload an image to find potential duplicate accounts based on facial similarity*
 
+---
+
+## 🔄 How It Works
+
+### System Overview
+
+The Face Matcher system operates in two phases: **Database Preparation** (offline) and **Duplicate Detection** (real-time).
+
+```mermaid
+graph TB
+    subgraph "Phase 1: Database Preparation (Offline)"
+        A[CSV Metadata] --> B[Download Images]
+        B --> C[Face Detection]
+        C --> D[Face Alignment]
+        D --> E[Embedding Extraction]
+        E --> F[Store in Milvus DB]
+    end
+
+    subgraph "Phase 2: Duplicate Detection (Real-time)"
+        G[Upload Image] --> H[Detect Face]
+        H --> I[Extract Embedding]
+        I --> J[Vector Search]
+        J --> K[Return Top Matches]
+        F -.-> J
+    end
+
+    style F fill:#e1f5ff
+    style K fill:#ffe1e1
+```
+
+### 📊 Database Preparation Flow
+
+**One-time setup to populate the database with known faces:**
+
+```
+┌─────────────────┐
+│ 1. CSV Metadata │ (name, image_url, image_id)
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ 2. Download     │ → downloads/Adam_Brody_360.jpg
+│    Images       │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ 3. Face         │ RetinaFace/Haar Cascade
+│    Detection    │ → Detect face regions
+└────────┬────────┘
+         │
+         ├──► cropped_faces/Adam_Brody_360_crop.jpg (original face crop)
+         │
+         ▼
+┌─────────────────┐
+│ 4. Face         │ Normalize to 112×112
+│    Alignment    │ → aligned_faces/Adam_Brody_360_aligned.jpg
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ 5. Embedding    │ MobileFaceNet (ONNX)
+│    Extraction   │ → 128-dim vector
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ 6. Store in     │ Milvus Lite Database
+│    Vector DB    │ → [name, paths, embedding]
+└─────────────────┘
+```
+
+**Command:**
+```bash
+python scripts/prepare_database.py --csv facescrub_metadata.csv --detector retinaface
+```
+
+---
+
+### 🔍 Duplicate Detection Flow
+
+**Real-time search for similar faces:**
+
+```
+┌─────────────────┐
+│ User uploads    │
+│ selfie image    │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ 1. Detect Face  │ RetinaFace/Haar Cascade
+│                 │ → Find face region
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ 2. Align Face   │ Normalize to 112×112
+│                 │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ 3. Extract      │ MobileFaceNet
+│    Embedding    │ → 128-dim query vector
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ 4. Vector       │ L2 Distance Search
+│    Search       │ → Find top-6 similar faces
+│  (Milvus Lite)  │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ 5. Calculate    │ similarity = 1 - (distance² / 4)
+│    Similarity   │
+└────────┬────────┘
+         │
+         ▼
+         ├──► If similarity ≥ 60% → 🚨 DUPLICATE DETECTED (red overlay)
+         │
+         └──► If similarity < 60% → ✅ NO DUPLICATE FOUND
+```
+
+**Threshold:** Configurable in `config.py` (default: 60%)
+
+---
+
+### 🏗️ System Architecture
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│                     Gradio Web Interface                     │
+│                    (gradio_app.py)                           │
+└───────────────┬──────────────────────────────┬───────────────┘
+                │                              │
+                ▼                              ▼
+    ┌───────────────────────┐      ┌─────────────────────────┐
+    │  Face Detection       │      │  Face Recognition       │
+    │  (detection.py)       │      │  (recognition.py)       │
+    │                       │      │                         │
+    │  • RetinaFaceDetector │      │  • FaceEmbeddingExtractor│
+    │  • HaarCascadeDetector│      │  • MobileFaceNet (ONNX) │
+    └───────────────────────┘      └─────────────────────────┘
+                │                              │
+                └──────────────┬───────────────┘
+                               │
+                               ▼
+                   ┌───────────────────────┐
+                   │   Vector Database     │
+                   │   (database.py)       │
+                   │                       │
+                   │   • Milvus Lite       │
+                   │   • IVF_FLAT Index    │
+                   │   • L2 Distance       │
+                   └───────────────────────┘
+                               │
+                               ▼
+                   ┌───────────────────────┐
+                   │  milvus_face_data.db  │
+                   │  (128-dim embeddings) │
+                   └───────────────────────┘
+```
+
+**Key Components:**
+- **Gradio UI**: Web interface for image upload and results display
+- **Detection Module**: Face detection using RetinaFace or Haar Cascade
+- **Recognition Module**: Embedding extraction using MobileFaceNet
+- **Database Module**: Vector storage and similarity search with Milvus Lite
+
+---
 
 ## Project Structure
 

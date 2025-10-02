@@ -239,10 +239,38 @@ class FaceMatchingApp:
             css="""
                 .duplicate-detected { color: red; font-weight: bold; }
                 .no-duplicate { color: green; font-weight: bold; }
-                .gallery-item figcaption { text-align: center !important; }
-                .gr-gallery .caption { text-align: center !important; }
-                .gr-gallery figcaption { text-align: center !important; }
-                [data-testid="gallery"] figcaption { text-align: center !important; }
+
+                /* Gallery caption styling */
+                .gallery-item figcaption {
+                    text-align: center !important;
+                    font-size: 0.75rem !important;
+                    line-height: 1.2 !important;
+                    padding: 4px !important;
+                    white-space: normal !important;
+                    word-wrap: break-word !important;
+                    overflow: visible !important;
+                }
+                .gr-gallery .caption {
+                    text-align: center !important;
+                    font-size: 0.75rem !important;
+                    white-space: normal !important;
+                }
+                .gr-gallery figcaption {
+                    text-align: center !important;
+                    font-size: 0.75rem !important;
+                    padding: 4px 2px !important;
+                    line-height: 1.3 !important;
+                }
+                [data-testid="gallery"] figcaption {
+                    text-align: center !important;
+                    font-size: 0.75rem !important;
+                }
+
+                /* Make gallery wider */
+                .wide-gallery {
+                    min-width: 100% !important;
+                    width: 100% !important;
+                }
             """
         ) as demo:
             gr.Markdown(
@@ -277,7 +305,7 @@ class FaceMatchingApp:
                         size="lg"
                     )
 
-                with gr.Column(scale=2):
+                with gr.Column(scale=3):
                     # Detection Result section (moved from left column)
                     gr.Markdown("### 📊 Detection Result")
                     status_output = gr.Textbox(
@@ -294,9 +322,12 @@ class FaceMatchingApp:
                     gallery_output = gr.Gallery(
                         label="Matches",
                         columns=3,
-                        object_fit="cover",
+                        object_fit="contain",
                         show_label=False,
-                        allow_preview=True
+                        allow_preview=True,
+                        height="auto",
+                        container=True,
+                        elem_classes="wide-gallery"
                     )
 
             # Instructions section
