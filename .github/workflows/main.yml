@@ -49,6 +49,7 @@ jobs:
                   "requirements-dev.txt", # Exclude dev dependencies
                   ".pytest_cache/*",
                   "*.egg-info/*",
+                  "*.gif",
               ]
           )
           
