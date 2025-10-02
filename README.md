@@ -12,7 +12,7 @@ pinned: false
 
 # Face Matcher - Duplicate Account Detection
 
-A face matching MVP for duplicate account detection using face embeddings and vector similarity search with Milvus Lite.
+A face matching MVP for duplicate account detection using face embeddings and vector similarity search with Milvus Lite Vector.
 
 ## Demo
 

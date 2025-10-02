@@ -215,11 +215,7 @@ class FaceMatchingApp:
                             img_rgb = cv2.addWeighted(img_rgb, 0.7, overlay, 0.3, 0)  # 30% red opacity
 
                         # Create caption
-                        caption = (
-                            f"#{idx+1}: {result['name']}\n"
-                            f"Similarity: {result['similarity']:.2%}\n"
-                            f"Distance: {result['distance']:.4f}"
-                        )
+                        caption = f"#{idx+1}: {result['name']}, Similarity: {result['similarity']:.2%}"
 
                         gallery_images.append((img_rgb, caption))
                     else:
@@ -243,6 +239,10 @@ class FaceMatchingApp:
             css="""
                 .duplicate-detected { color: red; font-weight: bold; }
                 .no-duplicate { color: green; font-weight: bold; }
+                .gallery-item figcaption { text-align: center !important; }
+                .gr-gallery .caption { text-align: center !important; }
+                .gr-gallery figcaption { text-align: center !important; }
+                [data-testid="gallery"] figcaption { text-align: center !important; }
             """
         ) as demo:
             gr.Markdown(
