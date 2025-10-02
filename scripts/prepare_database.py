@@ -12,7 +12,7 @@ import argparse
 import logging
 from typing import List, Tuple
 from tqdm import tqdm
-import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import sys
 from pathlib import Path
@@ -59,12 +59,46 @@ def download_image(url: str, save_path: str, timeout: int = 10) -> bool:
         return False
 
 
+def download_images_parallel(download_tasks: List[Tuple[str, str]], max_workers: int = 10) -> List[bool]:
+    """
+    Download multiple images in parallel
+
+    Args:
+        download_tasks: List of (url, save_path) tuples
+        max_workers: Maximum number of parallel downloads
+
+    Returns:
+        List of success status for each download
+    """
+    results = [False] * len(download_tasks)
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        # Submit all download tasks
+        future_to_idx = {
+            executor.submit(download_image, url, save_path): idx
+            for idx, (url, save_path) in enumerate(download_tasks)
+        }
+
+        # Collect results as they complete
+        for future in as_completed(future_to_idx):
+            idx = future_to_idx[future]
+            try:
+                results[idx] = future.result()
+            except Exception as e:
+                logger.debug(f"Download task {idx} failed: {e}")
+                results[idx] = False
+
+    return results
+
+
 def process_dataset(
     csv_path: str,
     output_dir: str,
     detector_type: str = "retinaface",
     max_images: int = None,
-    skip_existing: bool = True
+    skip_existing: bool = True,
+    parallel: bool = True,
+    max_workers: int = 20
 ) -> Tuple[List[str], List[str], List[str], List[np.ndarray]]:
     """
     Process dataset: download images and detect faces
@@ -75,6 +109,8 @@ def process_dataset(
         detector_type: "retinaface" or "haarcascade"
         max_images: Maximum number of images to process
         skip_existing: Skip if aligned face already exists
+        parallel: Use parallel processing for downloads (default: True)
+        max_workers: Number of parallel workers for downloads (default: 20)
 
     Returns:
         Tuple of (names, image_paths, original_paths, aligned_faces)
@@ -101,12 +137,11 @@ def process_dataset(
 
     logger.info(f"Processing {len(rows)} images with {detector_type} detector...")
 
-    names = []
-    image_paths = []
-    original_paths = []
-    aligned_faces = []
+    # Step 1: Prepare file paths and identify images to download
+    download_tasks = []
+    row_info = []  # Store (row, download_path, aligned_path, cropped_path)
 
-    for row in tqdm(rows, desc="Processing images"):
+    for row in rows:
         name = row['name']
         image_id = row['image_id']
         url = row['url']
@@ -121,23 +156,45 @@ def process_dataset(
         cropped_filename = f"{name}_{image_id}_crop.jpg".replace(" ", "_")
         cropped_path = os.path.join(cropped_dir, cropped_filename)
 
+        row_info.append((row, download_path, aligned_path, cropped_path))
+
+        # Add to download queue if image doesn't exist
+        if not os.path.exists(download_path):
+            download_tasks.append((url, download_path))
+
+    # Step 2: Download missing images (parallel or sequential)
+    if download_tasks:
+        if parallel:
+            logger.info(f"Downloading {len(download_tasks)} images in parallel (workers={max_workers})...")
+            download_images_parallel(download_tasks, max_workers=max_workers)
+        else:
+            logger.info(f"Downloading {len(download_tasks)} images sequentially...")
+            for url, save_path in tqdm(download_tasks, desc="Downloading images"):
+                download_image(url, save_path)
+
+    # Step 3: Process faces (detection and alignment)
+    names = []
+    image_paths = []
+    original_paths = []
+    aligned_faces = []
+
+    for row, download_path, aligned_path, cropped_path in tqdm(row_info, desc="Detecting and aligning faces"):
+        name = row['name']
+
         # Skip if both aligned and cropped faces already exist
-        if skip_existing and os.path.exists(aligned_path) and os.path.exists(cropped_path) and os.path.exists(download_path):
+        if skip_existing and os.path.exists(aligned_path) and os.path.exists(cropped_path):
             aligned_face = cv2.imread(aligned_path)
             if aligned_face is not None:
                 names.append(name)
-                image_paths.append(cropped_path)  # Store path to cropped face
-                original_paths.append(download_path)  # Store path to original download
+                image_paths.append(cropped_path)
+                original_paths.append(download_path)
                 aligned_faces.append(aligned_face)
             continue
 
-        # Download image if not exists
-        if not os.path.exists(download_path):
-            if not download_image(url, download_path):
-                continue
-            time.sleep(0.1)  # Rate limiting
-
         # Load image
+        if not os.path.exists(download_path):
+            continue
+
         image = cv2.imread(download_path)
         if image is None:
             continue
@@ -148,13 +205,13 @@ def process_dataset(
             continue
 
         # Save both versions
-        cv2.imwrite(aligned_path, aligned_face)  # For embedding extraction
-        cv2.imwrite(cropped_path, original_crop)  # For display in gallery
+        cv2.imwrite(aligned_path, aligned_face)
+        cv2.imwrite(cropped_path, original_crop)
 
         # Store results
         names.append(name)
-        image_paths.append(cropped_path)  # Store path to original crop for gallery
-        original_paths.append(download_path)  # Store path to original download
+        image_paths.append(cropped_path)
+        original_paths.append(download_path)
         aligned_faces.append(aligned_face)
 
     logger.info(f"Successfully processed {len(names)} faces")
@@ -164,7 +221,10 @@ def process_dataset(
 
 def extract_embeddings(
     aligned_faces: List[np.ndarray],
-    model_path: str
+    model_path: str,
+    device: str = "cuda",
+    batch_size: int = 32,
+    use_batch: bool = True
 ) -> np.ndarray:
     """
     Extract face embeddings using MobileFaceNet
@@ -172,21 +232,36 @@ def extract_embeddings(
     Args:
         aligned_faces: List of aligned face images
         model_path: Path to ONNX model
+        device: Device to use ("cuda" or "cpu")
+        batch_size: Batch size for batch processing (default: 32)
+        use_batch: Use batch processing for faster inference (default: True)
 
     Returns:
         Numpy array of embeddings (N x embedding_dim)
     """
-    logger.info("Extracting embeddings...")
-
     # Initialize embedding extractor
-    extractor = FaceEmbeddingExtractor(model_path)
+    extractor = FaceEmbeddingExtractor(model_path, device=device)
 
-    embeddings = []
-    for aligned_face in tqdm(aligned_faces, desc="Extracting embeddings"):
-        embedding = extractor.extract_embedding(aligned_face)
-        embeddings.append(embedding)
+    if use_batch and batch_size > 1:
+        logger.info(f"Extracting embeddings with batch processing (batch_size={batch_size}, device={device})...")
+        embeddings = []
+        num_batches = (len(aligned_faces) + batch_size - 1) // batch_size
 
-    embeddings_array = np.array(embeddings, dtype=np.float32)
+        for i in tqdm(range(0, len(aligned_faces), batch_size),
+                      desc="Extracting embeddings", total=num_batches):
+            batch = aligned_faces[i:i + batch_size]
+            batch_embeddings = extractor.extract_embeddings_batch(batch)
+            embeddings.append(batch_embeddings)
+
+        embeddings_array = np.vstack(embeddings)
+    else:
+        logger.info(f"Extracting embeddings sequentially (device={device})...")
+        embeddings = []
+        for aligned_face in tqdm(aligned_faces, desc="Extracting embeddings"):
+            embedding = extractor.extract_embedding(aligned_face)
+            embeddings.append(embedding)
+        embeddings_array = np.array(embeddings, dtype=np.float32)
+
     logger.info(f"Extracted {len(embeddings_array)} embeddings with shape {embeddings_array.shape}")
 
     return embeddings_array
@@ -302,6 +377,37 @@ def main():
         default=False,
         help='Reset database by dropping existing collection and creating new one'
     )
+    parser.add_argument(
+        '--device',
+        type=str,
+        choices=['cuda', 'cpu'],
+        default='cuda',
+        help='Device for ONNX inference: cuda (GPU) or cpu (default: cuda)'
+    )
+    parser.add_argument(
+        '--parallel',
+        action='store_true',
+        default=True,
+        help='Use parallel processing for downloads and batch inference (default: True)'
+    )
+    parser.add_argument(
+        '--no-parallel',
+        dest='parallel',
+        action='store_false',
+        help='Disable parallel processing, use sequential mode'
+    )
+    parser.add_argument(
+        '--batch_size',
+        type=int,
+        default=32,
+        help='Batch size for embedding extraction (default: 32, only used with --parallel)'
+    )
+    parser.add_argument(
+        '--max_workers',
+        type=int,
+        default=20,
+        help='Number of parallel workers for image downloads (default: 20, only used with --parallel)'
+    )
 
     args = parser.parse_args()
 
@@ -312,13 +418,23 @@ def main():
     # Create necessary directories
     Config.create_directories()
 
+    # Log configuration
+    logger.info(f"Configuration:")
+    logger.info(f"  Device: {args.device}")
+    logger.info(f"  Parallel mode: {args.parallel}")
+    if args.parallel:
+        logger.info(f"  Batch size: {args.batch_size}")
+        logger.info(f"  Max workers: {args.max_workers}")
+
     # Process dataset
     names, image_paths, original_paths, aligned_faces = process_dataset(
         csv_path=args.csv,
         output_dir=args.output_dir,
         detector_type=args.detector,
         max_images=args.max_images,
-        skip_existing=args.skip_existing
+        skip_existing=args.skip_existing,
+        parallel=args.parallel,
+        max_workers=args.max_workers
     )
 
     if len(names) == 0:
@@ -326,7 +442,13 @@ def main():
         return
 
     # Extract embeddings
-    embeddings = extract_embeddings(aligned_faces, model_path=args.model)
+    embeddings = extract_embeddings(
+        aligned_faces,
+        model_path=args.model,
+        device=args.device,
+        batch_size=args.batch_size if args.parallel else 1,
+        use_batch=args.parallel
+    )
 
     # Populate database
     populate_database(

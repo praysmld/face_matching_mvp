@@ -132,6 +132,45 @@ class FaceEmbeddingExtractor:
 
         return embedding
 
+    def extract_embeddings_batch(self, images: list) -> np.ndarray:
+        """
+        Extract face embeddings from multiple aligned face images (batch processing)
+
+        Note: This runs inference sequentially but is optimized for GPU execution.
+        True batching requires a dynamic batch size ONNX model.
+
+        Args:
+            images: List of aligned face images (BGR or RGB format)
+
+        Returns:
+            Numpy array of face embeddings (L2 normalized), shape (N, embedding_dim)
+        """
+        if len(images) == 0:
+            return np.array([])
+
+        embeddings_list = []
+
+        # Process each image (model has fixed batch size of 1)
+        for img in images:
+            # Preprocess image
+            input_data = self.preprocess_image(img)
+
+            # Run inference
+            outputs = self.session.run([self.output_name], {self.input_name: input_data})
+
+            # Get embedding (remove batch dimension)
+            embedding = outputs[0][0]
+
+            # L2 normalize
+            embedding = embedding / np.linalg.norm(embedding)
+
+            embeddings_list.append(embedding)
+
+        # Stack all embeddings
+        embeddings = np.array(embeddings_list, dtype=np.float32)
+
+        return embeddings
+
     def extract_embedding_from_path(self, image_path: str) -> Optional[np.ndarray]:
         """
         Extract face embedding from image file path

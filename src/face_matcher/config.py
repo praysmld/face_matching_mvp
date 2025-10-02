@@ -17,8 +17,9 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent
 class ModelConfig:
     """Model configuration"""
     model_path: str = str(PROJECT_ROOT / "models/MobileFaceNet.onnx")
-    device: str = "cpu"  # "cpu" or "cuda"
+    device: str = "cuda"  # "cpu" or "cuda"
     embedding_dim: int = 128
+    batch_size: int = 32  # Batch size for embedding extraction
 
 
 @dataclass
