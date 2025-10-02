@@ -288,10 +288,9 @@ class FaceMatchingApp:
                     gallery_output = gr.Gallery(
                         label="Matches",
                         columns=3,
-                        rows=2,
-                        height=400,
                         object_fit="cover",
-                        show_label=False
+                        show_label=False,
+                        allow_preview=True
                     )
 
             # Instructions section
