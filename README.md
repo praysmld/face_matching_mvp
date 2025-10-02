@@ -53,7 +53,9 @@ face_matching_mvp/
 ├── data/                       # Data directory
 │   ├── downloads/              # Downloaded images
 │   ├── aligned_faces/          # Aligned face crops (for embeddings)
-│   └── cropped_faces/          # Original face crops (for display)
+|   ├── cropped_faces/          # Original face crops (for display)
+│   └── milvus_face_data.db     # Faces database in Milvus     
+|   
 │
 ├── models/
 │   └── MobileFaceNet.onnx     # Face embedding model
